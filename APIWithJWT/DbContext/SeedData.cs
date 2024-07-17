@@ -11,37 +11,75 @@ namespace APIWithJWT.DbContext
     {
         public static async Task Initialize(IServiceProvider serviceProvider)
         {
-            using var scope = serviceProvider.CreateScope();
-            var services = scope.ServiceProvider;
+
 
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            await EnsureRolesAsync(roleManager);
-            await EnsureTestUserAsync(userManager);
+            await CreateRolesAndUsers(userManager, roleManager);
         }
 
-        private static async Task EnsureRolesAsync(RoleManager<IdentityRole> roleManager)
+        private static async Task CreateRolesAndUsers(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
-            var roles = new[] { "User", "Admin" };
+            string[] roleNames = { "Admin", "Waiter" };
+            IdentityResult roleResult;
 
-            foreach (var role in roles)
+            foreach (var roleName in roleNames)
             {
-                if (!await roleManager.RoleExistsAsync(role))
+                var roleExist = await roleManager.RoleExistsAsync(roleName);
+                if (!roleExist)
                 {
-                    await roleManager.CreateAsync(new IdentityRole(role));
+                    roleResult = await roleManager.CreateAsync(new IdentityRole(roleName));
                 }
             }
-        }
 
-        private static async Task EnsureTestUserAsync(UserManager<ApplicationUser> userManager)
-        {
-            var testUser = new ApplicationUser { UserName = "test", Email = "test@example.com" };
-
-            if (await userManager.FindByNameAsync(testUser.UserName) == null)
+            // Create Admin user
+            if (userManager.FindByNameAsync("admin").Result == null)
             {
-                await userManager.CreateAsync(testUser, "Password123!");
-                await userManager.AddToRoleAsync(testUser, "User");
+                ApplicationUser user = new ApplicationUser
+                {
+                    UserName = "admin",
+                    Email = "admin@example.com",
+                };
+
+                var result = await userManager.CreateAsync(user, "AdminPassword123!");
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(user, "Admin");
+                }
+            }
+
+            // Create Waiter user
+            if (userManager.FindByNameAsync("waiter").Result == null)
+            {
+                ApplicationUser user = new ApplicationUser
+                {
+                    UserName = "waiter",
+                    Email = "waiter@example.com",
+                };
+
+                var result = await userManager.CreateAsync(user, "WaiterPassword123!");
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(user, "Waiter");
+                }
+            }
+
+            // Create SuperAdmin user
+            if (userManager.FindByNameAsync("superadmin").Result == null)
+            {
+                ApplicationUser user = new ApplicationUser
+                {
+                    UserName = "superadmin",
+                    Email = "superadmin@example.com",
+                };
+
+                var result = await userManager.CreateAsync(user, "SuperAdminPassword123!");
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(user, "Admin");
+                    await userManager.AddToRoleAsync(user, "Waiter");
+                }
             }
         }
     }
